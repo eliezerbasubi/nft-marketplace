@@ -1,7 +1,8 @@
 require("@nomiclabs/hardhat-waffle");
+const fs = require("fs");
 
-const projectId = process.env.NEXT_PUBLIC_PROJECT_ID;
-const privateKey = process.env.NEXT_PUBLIC_PRIVATE_KEY;
+const privateKey = fs.readFileSync(".secret").toString();
+const projectId = fs.readFileSync(".projectId").toString();
 
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
   const accounts = await hre.ethers.getSigners();
