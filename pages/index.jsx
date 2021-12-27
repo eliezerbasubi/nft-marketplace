@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import { useCallback, useEffect, useState } from "react";
 import { ethers } from "ethers";
 import axios from "axios";
@@ -13,62 +14,72 @@ export default function Home() {
   const [hasLoaded, setHasLoaded] = useState(false);
 
   const loadNFTs = useCallback(async () => {
-    const provider = new ethers.providers.JsonRpcProvider();
-    const tokenContract = new ethers.Contract(nftAddress, NFT.abi, provider);
-    const marketContract = new ethers.Contract(
-      nftMarketAddress,
-      NFTMarket.abi,
-      provider
-    );
+    try {
+      const provider = new ethers.providers.JsonRpcProvider(
+        "https://data-seed-prebsc-1-s1.binance.org:8545"
+      );
+      const tokenContract = new ethers.Contract(nftAddress, NFT.abi, provider);
+      const marketContract = new ethers.Contract(
+        nftMarketAddress,
+        NFTMarket.abi,
+        provider
+      );
 
-    const data = await marketContract.fetchMarketItems();
+      const data = await marketContract.fetchMarketItems();
 
-    const items = await Promise.all(
-      data.map(async (datum) => {
-        const tokenURI = await tokenContract.tokenURI(datum.tokenId);
-        const { data: meta } = await axios.get(tokenURI);
-        const price = ethers.utils.formatUnits(datum.price, "ether");
+      const items = await Promise.all(
+        data.map(async (datum) => {
+          const tokenURI = await tokenContract.tokenURI(datum.tokenId);
+          const { data: meta } = await axios.get(tokenURI);
+          const price = ethers.utils.formatUnits(datum.price, "ether");
 
-        return {
-          price,
-          tokenId: datum.tokenId.toNumber(),
-          seller: datum.seller,
-          owner: datum.owner,
-          image: meta.image,
-          name: meta.name,
-          description: meta.description,
-        };
-      })
-    );
+          return {
+            price,
+            tokenId: datum.tokenId.toNumber(),
+            seller: datum.seller,
+            owner: datum.owner,
+            image: meta.image,
+            name: meta.name,
+            description: meta.description,
+          };
+        })
+      );
 
-    setNfts(items);
-    setHasLoaded(true);
+      setNfts(items);
+      setHasLoaded(true);
+    } catch (err) {
+      console.log("LOAD ERROR", err);
+    }
   }, []);
 
   const buyNFT = async (nft) => {
     // CONNECT TO THE WALLET
-    const web3Modal = new Web3Modal();
-    const connection = await web3Modal.connect();
-    const provider = new ethers.providers.Web3Provider(connection);
+    try {
+      const web3Modal = new Web3Modal();
+      const connection = await web3Modal.connect();
+      const provider = new ethers.providers.Web3Provider(connection);
 
-    // GET SIGNER TO EXECUTE TRANSACTION
-    const signer = provider.getSigner();
-    const contract = new ethers.Contract(
-      nftMarketAddress,
-      NFTMarket.abi,
-      signer
-    );
+      // GET SIGNER TO EXECUTE TRANSACTION
+      const signer = provider.getSigner();
+      const contract = new ethers.Contract(
+        nftMarketAddress,
+        NFTMarket.abi,
+        signer
+      );
 
-    const price = ethers.utils.parseUnits(nft.price.toString(), "ether");
+      const price = ethers.utils.parseUnits(nft.price.toString(), "ether");
 
-    const transaction = await contract.createMarketSale(
-      nftAddress,
-      nft.tokenId,
-      { value: price }
-    );
-    await transaction.wait();
+      const transaction = await contract.createMarketSale(
+        nftAddress,
+        nft.tokenId,
+        { value: price }
+      );
+      await transaction.wait();
 
-    loadNFTs();
+      loadNFTs();
+    } catch (err) {
+      console.log("ERROR", err);
+    }
   };
 
   useEffect(() => {
@@ -87,7 +98,7 @@ export default function Home() {
               key={index.toFixed(2)}
               className="border shadow rounded-xl overflow-hidden"
             >
-              <Image src={nft.image} alt="NFT" />
+              <img src={nft.image} alt="NFT" />
               <div className="p-4">
                 <p className="h-[64px] text-2xl font-semibold">{nft.name}</p>
                 <div className="h-[70px] overflow-hidden">
@@ -99,7 +110,6 @@ export default function Home() {
                   {nft.price} Matic
                 </p>
                 <button
-                  type="button"
                   className="w-full bg-pink-500 text-white font-bold py-2 px-12 rounded"
                   onClick={() => buyNFT(nft)}
                 >
